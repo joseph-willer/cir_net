@@ -14,8 +14,7 @@ def canvas(request):
 def solve(request):
     #print(json.loads(request.body))
     components = json.loads(request.body)
-    voltages = siso_solve.solve(components)
-    json_voltages = json.dumps(voltages)
+    results = siso_solve.solve(components)
     #for component in json.loads(request.body):
     #    print(component["type"])
-    return JsonResponse(voltages, safe=False)
+    return JsonResponse(results, safe=False)

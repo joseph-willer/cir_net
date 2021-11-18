@@ -22,6 +22,8 @@ var wires = [];
 var nodes = []
 var voltages = []
 var gnd_node = 0
+var buttons = []
+var probes = []
 scale = 1
 
 drawCircuit()
@@ -62,52 +64,88 @@ function reset (){
 }
 
 function edit (){
+    img = ctx.getImageData(0,0,width,height)
+    editing = false;
     canvas.onmousedown = function(e){
+        ctx.clearRect(0,0,canvas.width/scale,canvas.height/scale)
+        ctx.putImageData(img, 0, 0)
         curX = (e.clientX - canvas.offsetLeft)/scale;
         curY = (e.clientY - canvas.offsetTop)/scale;
-        for(var i=0;i<components.length;i++){
-            const component_rect = new Path2D();
-            component_rect.rect(components[i].x, components[i].y, components[i].width, components[i].height)
-            if(ctx.isPointInPath(component_rect, curX, curY)){
-                components[i] = openComponentEdit(components[i])
+        if(!editing){
+            for(var i=0;i<components.length;i++){
+                const component_rect = new Path2D();
+                component_rect.rect(components[i].x, components[i].y, components[i].width, components[i].height)
+                if(ctx.isPointInPath(component_rect, curX, curY)){
+                    openComponentEdit(i)
+                    editing = true;
+                }
             }
+        } else {
+            button_hit = false;
+            for(var i=0; i<buttons.length;i++){
+                if(ctx.isPointInPath(buttons[i].path, curX, curY)){
+                    if(buttons[i].direction == 'up'){
+                        button_hit = true;
+                        components[buttons[i].component].value = components[buttons[i].component].value + 1
+                    } else if(buttons[i].direction=='down'){
+                        button_hit = true;
+                        components[buttons[i].component].value = components[buttons[i].component].value - 1
+                    }
+                    drawComponentEdit(components[buttons[i].component])
+                }
+            }
+            if(button_hit == false){
+                ctx.putImageData(img, 0,0)
+                editing = false;
+            }
+            
         }
+        
+  
     }
+    canvas.onmouseup = function (e){
+        hold = false;
+    };
+    canvas.onmousemove = function (e){
+        hold = false;
+    };
 }
 
 function drawComponentEdit(component){
     ctx.beginPath()
     ctx.moveTo(component.x, component.y);
+
     ctx.fillStyle = 'black'
-    ctx.fillRect(component.x, component.y, 200, -200)
+    ctx.fillRect(component.x, component.y, 50+8*(Math.floor(Math.log10(component.value))), -100)
     ctx.fillStyle = 'green'
-    ctx.font = "15px Arial";
-    ctx.fillText(component.value, component.x+10, component.y-10)
+    ctx.moveTo(component.x+10, component.y-70)
+    ctx.lineTo(component.x+25+4*(Math.floor(Math.log10(component.value))), component.y-90)
+    ctx.lineTo(component.x+40+8*(Math.floor(Math.log10(component.value))), component.y-70)
+    ctx.moveTo(component.x+10, component.y-30)
+    ctx.lineTo(component.x+25+4*(Math.floor(Math.log10(component.value))), component.y-10)
+    ctx.lineTo(component.x+40+8*(Math.floor(Math.log10(component.value))), component.y-30)
+    ctx.font = "18px Arial";
+    ctx.fillText(component.value+" Ω", component.x+10, component.y-43)
+    ctx.font = "28px Arial";
+    //ctx.fillText("+", component.x+10, component.y-80)
+    //ctx.fillText("-", component.x+10, component.y-20)
+    ctx.strokeStyle = "green"
     ctx.stroke()
+    ctx.strokeStyle = "black"
 }
 
 
-function openComponentEdit(component){
-    
-    if(component.type == 'resistor'){
-        var keyHistory = component.value
-        window.addEventListener("keyup", keyUpHandler, true);
-        drawComponentEdit(component)
+function openComponentEdit(i){
+    buttons = []
+    if(components[i].type == 'resistor'){
+        drawComponentEdit(components[i])
+        upbut = new Path2D();
+        upbut.rect(components[i].x, components[i].y-100, 40, 30)
+        buttons.push({path: upbut, component:i, direction:'up'})
+        downbut = new Path2D();
+        downbut.rect(components[i].x, components[i].y-30, 40, 30)
+        buttons.push({path: downbut, component:i, direction:'down'})
 
-    }
-    function addletter(letter){
-        keyHistory+=letter;
-        ctx.clearRect(0,0,300,300);
-        ctx.fillText(keyHistory,20,20);
-    }
-    
-    function keyUpHandler(event){
-        var letters="abcdefghijklmnopqrstuvwxyz";
-        var key=event.keyCode;
-        if(key>64 && key<91){
-            var letter=letters.substring(key-64,key-65);
-            addletter(letter);
-        }
     }
 }
 
@@ -269,6 +307,7 @@ function checkComponents(curX, curY, components, wires, wiring_status){
 }
 
 function wire (){
+    drawCircuit()
     var wiring_status = {wire_started: false, wire_start: false}
     //console.log(wiring_status.wire_started)
     canvas.onmousedown = function (e){
@@ -309,12 +348,35 @@ function wire (){
 
         if(wiring_status.wire_started==true && !wiring_status.wire_start){
             ctx.putImageData(img, 0, 0)
-            new_wire.midpoints.push({
-                x: curX,
-                y: curY
-            })
-            new_wire.x2 = curX;
-            new_wire.y2 = curY;
+            if(pressedKeys[16]==true){
+                if(new_wire.midpoints.length>0){
+                    last_point=new_wire.midpoints[new_wire.midpoints.length-1]
+                } else {
+                    last_point = ({x: new_wire.x1, y: new_wire.y1})
+                }
+                if(Math.abs(last_point.x-curX)>Math.abs(last_point.y-curY)){
+                    new_wire.midpoints.push({
+                        x: curX,
+                        y: last_point.y
+                    })
+                    new_wire.x2 = curX;
+                    new_wire.y2 = last_point.y;
+                } else {
+                    new_wire.midpoints.push({
+                        x: last_point.x,
+                        y: curY
+                    })
+                    new_wire.x2 = last_point.x;
+                    new_wire.y2 = curY;
+                }  
+            } else {
+                new_wire.midpoints.push({
+                    x: curX,
+                    y: curY
+                })
+                new_wire.x2 = curX;
+                new_wire.y2 = curY;
+            }
             drawWire(new_wire);
         } else if(wiring_status.wire_started==true){
             wiring_status.wire_start = false;
@@ -333,8 +395,23 @@ function wire (){
             return
         }
         ctx.putImageData(img, 0, 0)
-        new_wire.x2 = curX;
-        new_wire.y2 = curY;
+        if(pressedKeys[16]==true){
+            if(new_wire.midpoints.length>0){
+                last_point=new_wire.midpoints[new_wire.midpoints.length-1]
+            } else {
+                last_point = ({x: new_wire.x1, y: new_wire.y1})
+            }
+            if(Math.abs(last_point.x-curX)>Math.abs(last_point.y-curY)){
+                new_wire.x2 = curX;
+                new_wire.y2 = last_point.y;
+            } else {
+                new_wire.x2 = last_point.x;
+                new_wire.y2 = curY;
+            }  
+        } else {
+            new_wire.x2 = curX;
+            new_wire.y2 = curY;
+        }
         drawWire(new_wire);
     }
 
@@ -435,8 +512,12 @@ function voltageSource (){
 function probe (){
     solve()
     drawCircuit()
+    probing = true
     img = ctx.getImageData(0,0,width,height)
     canvas.onmousemove = function (e){
+        if(!probing){
+            return
+        }
         ctx.putImageData(img, 0, 0);
         curX = (e.clientX - canvas.offsetLeft)/scale;
         curY = (e.clientY - canvas.offsetTop)/scale;
@@ -449,10 +530,30 @@ function probe (){
         }
         drawResult(curX, curY, voltage)
     }
+    canvas.onmousedown = function (e){
+        ctx.putImageData(img, 0, 0);
+        curX = (e.clientX - canvas.offsetLeft)/scale;
+        curY = (e.clientY - canvas.offsetTop)/scale;
+        voltage = 0
+        wire_hit = false;
+        for(var i=0; i<wires.length; i++){
+            var result = checkWirePath(wires[i], curX, curY)
+            if(result.status){
+                probes.push({x: curX, y: curY, wire: wires[i]})
+                wire_hit = true
+            }
+        }
+        if(!wire_hit){
+            probing = !probing
+        }
+        drawCircuit()
+        img = ctx.getImageData(0,0,width,height)
+    }
 }
 
 
 function resistor (){
+    drawCircuit()
     img = ctx.getImageData(0,0,width,height)
     node_count = nodes.length
     node1 = node_count+1
@@ -506,64 +607,6 @@ function resistor (){
         
 // eraser tool
         
-function eraser (){
-        
-    /*canvas.onmousedown = function (e){
-        hold = true;
-    };
-        
-    canvas.onmousemove = function (e){
-        if (hold){
-            curX = (e.clientX - canvas.offsetLeft)/scale;
-            curY = (e.clientY - canvas.offsetTop)/scale;;
-            ctx.clearRect(curX, curY, 20, 20);
-            canvas_data.eraser.push({ "endx": curX, "endy": curY, "thick": ctx.lineWidth });
-        }
-    };
-        
-    canvas.onmouseup = function (e){
-        hold = false;
-    };
-        
-    canvas.onmouseout = function (e){
-        hold = false;
-    };
-    */
-    canvas.onmousedown = function (e){
-        curX = (e.clientX - canvas.offsetLeft)/scale;
-        curY = (e.clientY - canvas.offsetTop)/scale;;
-        hold = true;
-            
-        prevX = curX;
-        prevY = curY;
-        ctx.beginPath();
-        ctx.moveTo(prevX, prevY);
-    };
-        
-    canvas.onmousemove = function (e){
-        if(hold){
-            curX = (e.clientX - canvas.offsetLeft)/scale;
-            curY = (e.clientY - canvas.offsetTop)/scale;;
-            draw();
-        }
-    };
-        
-    canvas.onmouseup = function (e){
-        hold = false;
-    };
-        
-    canvas.onmouseout = function (e){
-        hold = false;
-    };
-        
-    function draw (){
-        ctx.lineTo(curX, curY);
-        ctx.strokeStyle = "#ffffff";
-        ctx.stroke();
-        canvas_data.eraser.push({ "startx": prevX, "starty": prevY, "endx": curX, "endy": curY, 
-            "thick": ctx.lineWidth, "color": ctx.strokeStyle });
-    }
-}
 
 
 function save (){
@@ -598,6 +641,15 @@ function drawCircuit(){
         var wire = wires[i]
         drawWire(wire);
     }
+    for(var i=0; i<probes.length; i++){
+        for(var j=0;j<wires.length; j++){
+            var result = checkWirePath(wires[j], probes[i].x, probes[i].y)
+            if(result.status){
+                voltage=voltages.find(el => el.node === wires[j].node).voltage
+            }
+        }
+        drawResult(probes[i].x, probes[i].y, voltage)
+    } 
 }
 
 function drawComponent(component){
@@ -827,10 +879,11 @@ function solve(){
         return res.json()
     }).then(data => {
         console.log(data)
-        voltages = data
+        voltages = data.voltages
+        currents = data.currents
         const table = document.getElementById("testBody");
         table.innerHTML = ""
-        data.forEach( data => {
+        voltages.forEach( data => {
             let row = table.insertRow();
             let node = row.insertCell(0);
             node.innerHTML = data.node;

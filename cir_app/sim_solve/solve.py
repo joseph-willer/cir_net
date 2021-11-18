@@ -31,7 +31,7 @@ class Put:
             self.z = impedence
             self.type = 'current-source'
         elif(type=='resistor'):
-            self.z = impedence
+            self.z = value
             self.type = 'resistor'
         elif(type=='capacitor'):
             self.c = value
@@ -43,6 +43,7 @@ class Put:
             self.type = 'inductor'
 
 def solve(components):
+    print(components)
     G = nx.MultiGraph()
     gnd_node = None
     v_s_count = 0
@@ -146,9 +147,16 @@ def solve(components):
     vs_is = np.dot(np.linalg.inv(addMat), z)
 
     voltages = [{"node": gnd_node, "voltage": 0}]
+    currents = []
 
     for i, node in enumerate(non_gnd_nodes):
         #print("node: ", node, vs_is[i])
         voltages.append({'node': node, 'voltage': vs_is[i]})
-    return voltages
+
+    for i, result in enumerate(vs_is):
+        if(i<len(non_gnd_nodes)):
+            voltages.append({'node': node, 'voltage': vs_is[i]})
+        else:
+            currents.append({'vs': i, 'current': vs_is[i]})
+    return {'voltages': voltages, 'currents':currents}
     
