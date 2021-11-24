@@ -13,8 +13,13 @@ def canvas(request):
 
 def solve(request):
     #print(json.loads(request.body))
-    components = json.loads(request.body)
-    results = siso_solve.solve(components)
+    data = json.loads(request.body)
+    print(data)
+    if(type(data)!=list):
+        results = siso_solve.solve(data['components'], data['frequency'])
+    else:
+        results = siso_solve.solve(data, 0.00000000000000000001)
+    print(results)
     #for component in json.loads(request.body):
     #    print(component["type"])
     return JsonResponse(results, safe=False)

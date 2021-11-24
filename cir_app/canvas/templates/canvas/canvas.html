@@ -1,34 +1,42 @@
 {% load static %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.js" integrity="sha512-+lwWRCGAWhCLRPruF7ruYxRlMQuRD1H9C/Pc/HYcuxachoLufBO7OU66bfFnVsFaHQj3S/CunEimw8alVvkl+Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 
-<canvas id="canvas" width="1200" height="650" style="border: 5px solid
-#000000; ">Update your browser to support HTML5 Canvas</canvas>
-<p>-------------</p>
+<p></p>
+<canvas id="canvas" width="1100" height="650" style="border: 5px solid
+#000000; float: left;">Update your browser to support HTML5 Canvas</canvas>
+<div style='float: left;'>
+  <div id='editor'></div>
+  <button id="resettool" type="button" style="height: 25px; width: 100px;" onclick="reset()">Reset</button>
+  <p></p>
+  <button id="resistor" type="button" style="height: 25px; width: 100px;" onclick="resistor()">Resistor</button>
+  <p></p>
+  <button id="capacitor" type="button" style="height: 25px; width: 100px;" onclick="capacitor()">Capacitor</button>
+  <p></p>
+  <button id="inductor" type="button" style="height: 25px; width: 100px;" onclick="inductor()">Inductor</button>
+  <p></p>
+  <button id="v_source" type="button" style="height: 25px; width: 100px;" onclick="voltageSource()">Voltage Source</button>
+  <p></p>
+  <button id="move" type="button" style="height: 25px; width: 100px;" onclick="move()">Move</button>
+  <p></p>
+  <button id="wire" type="button" style="height: 25px; width: 100px;" onclick="wire()">Wire</button>
+  <p></p>
+  <button id="ground" type="button" style="height: 25px; width: 100px;" onclick="ground()">Ground</button>
+  <p></p>
+  <button id="probe" type="button" style="height: 25px; width: 100px;" onclick="probe()">Probe</button>
+  <p></p>
+  <button id="solve" type="button" style="height: 25px; width: 100px;" onclick="solve()">Solve</button>
+  <p></p>
+  <button id="zoom_in" type="button" style="height: 25px; width: 100px;" onclick="zoom('in')">+</button>
+  <p></p>
+  <button id="zoom_out" type="button" style="height: 25px; width: 100px;" onclick="zoom('out')">-</button>
+  <p></p>
+  <button id="edit" type="button" style="height: 25px; width: 100px;" onclick="edit()">Edit</button>
+  <p></p>
+  <button id="domain" type="button" style="height: 25px; width: 100px;" onclick="changeDomain()">AC/DC</button>
+  <p></p>
+</div>
+<p></p>
 
-<button id="linetool" type="button" style="height: 25px; width: 100px;" onclick="line()">Line</button>
-<button id="resettool" type="button" style="height: 25px; width: 100px;" onclick="reset()">Reset</button>
-<button id="resistor" type="button" style="height: 25px; width: 100px;" onclick="resistor()">Resistor</button>
-<button id="v_source" type="button" style="height: 25px; width: 100px;" onclick="voltageSource()">Voltage Source</button>
-<button id="move" type="button" style="height: 25px; width: 100px;" onclick="move()">Move</button>
-<button id="wire" type="button" style="height: 25px; width: 100px;" onclick="wire()">Wire</button>
-<button id="ground" type="button" style="height: 25px; width: 100px;" onclick="ground()">Ground</button>
-<button id="probe" type="button" style="height: 25px; width: 100px;" onclick="probe()">Probe</button>
-<button id="solve" type="button" style="height: 25px; width: 100px;" onclick="solve()">Solve</button>
-<button id="zoom_in" type="button" style="height: 25px; width: 100px;" onclick="zoom('in')">+</button>
-<button id="zoom_out" type="button" style="height: 25px; width: 100px;" onclick="zoom('out')">-</button>
-<button id="edit" type="button" style="height: 25px; width: 100px;" onclick="edit()">Edit</button>
-<p id='x'>CurX: 0</p>
-<p id='y'>CurY: 0</p>
-<p id='new_wire'> waiting</p>
-
-<table id="myTable" class="table table-borderless table-striped table-earning">
-    <thead>
-      <tr>
-        <th>node</th>
-        <th>voltage</th>
-      </tr>
-    </thead>
-    <tbody id="testBody"></tbody>
-  </table>
 
 <script src="{% static 'canvas/canvas.js' %}"></script>

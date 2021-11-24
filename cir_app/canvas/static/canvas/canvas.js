@@ -1,3 +1,9 @@
+//var mathScript = document.createElement('script');  
+//mathScript.setAttribute('src','https://unpkg.com/mathjs@9.5.1/browser/math.js');
+//mathScript.setAttribute('type',"text/javascript");
+//document.head.appendChild(mathScript);
+
+
 var pressedKeys = {};
 window.onkeyup = function(e) { pressedKeys[e.keyCode] = false; }
 window.onkeydown = function(e) { pressedKeys[e.keyCode] = true; }
@@ -24,7 +30,10 @@ var voltages = []
 var gnd_node = 0
 var buttons = []
 var probes = []
+var edit_boxes = []
+var domain = 'dc'
 scale = 1
+console.log(math.round(math.e, 3))
 
 drawCircuit()
                         
@@ -60,15 +69,44 @@ function reset (){
     components = []
     wires = []
     nodes = []
+    probes = []
     img = []
+    edit_boxes = []
+    var container = document.getElementById('editor')
+    while (container.firstChild){
+        container.removeChild(container.firstChild)
+    }
 }
+
+function getBox(element, data, key) {
+    this.data = data;
+    this.element = element;
+    this.key = key;
+    element.value = data;
+    element.addEventListener("change", this, false);
+}
+
+getBox.prototype.handleEvent = function(event) {
+    switch (event.type) {
+        case "change": this.change(this.element.value);
+    }
+};
+
+getBox.prototype.change = function(value) {
+    this.data = value;
+    this.element.value = value;
+};
+
+var obj = new getBox(document.getElementById("functionbar"), "20");
 
 function edit (){
     img = ctx.getImageData(0,0,width,height)
     editing = false;
     canvas.onmousedown = function(e){
         ctx.clearRect(0,0,canvas.width/scale,canvas.height/scale)
-        ctx.putImageData(img, 0, 0)
+        solve()
+        drawCircuit()
+        //ctx.putImageData(img, 0, 0)
         curX = (e.clientX - canvas.offsetLeft)/scale;
         curY = (e.clientY - canvas.offsetTop)/scale;
         if(!editing){
@@ -86,16 +124,35 @@ function edit (){
                 if(ctx.isPointInPath(buttons[i].path, curX, curY)){
                     if(buttons[i].direction == 'up'){
                         button_hit = true;
-                        components[buttons[i].component].value = components[buttons[i].component].value + 1
+                        components[buttons[i].component].value[Object.keys(components[buttons[i].component].value)[0]] = components[buttons[i].component].value[Object.keys(components[buttons[i].component].value)[0]] + 1
                     } else if(buttons[i].direction=='down'){
                         button_hit = true;
-                        components[buttons[i].component].value = components[buttons[i].component].value - 1
+                        components[buttons[i].component].value[Object.keys(components[buttons[i].component].value)[0]] = components[buttons[i].component].value[Object.keys(components[buttons[i].component].value)[0]] - 1
+                    } else if(buttons[i].direction=='set'){
+                        button_hit = true;
+                        for(var j=0; j<edit_boxes.length;j++){
+                            components[buttons[i].component].value[edit_boxes[j].key] = parseFloat(edit_boxes[j].data);
+                            if(edit_boxes[j].key=='frequency'){
+                                frequency = parseFloat(edit_boxes[j].data)
+                            }
+                        }
+                        //components[buttons[i].component].value.amplitude = parseFloat(obj.data);
                     }
+                    ctx.clearRect(0,0,canvas.width/scale,canvas.height/scale)
+                    solve()
+                    drawCircuit()
                     drawComponentEdit(components[buttons[i].component])
                 }
             }
             if(button_hit == false){
-                ctx.putImageData(img, 0,0)
+                //ctx.putImageData(img, 0,0)
+                var container = document.getElementById('editor')
+                while (container.firstChild){
+                    container.removeChild(container.firstChild)
+                }
+                solve()
+                ctx.clearRect(0,0,canvas.width/scale,canvas.height/scale)
+                drawCircuit()
                 editing = false;
             }
             
@@ -112,20 +169,47 @@ function edit (){
 }
 
 function drawComponentEdit(component){
+    var container = document.getElementById('editor')
+    while (container.firstChild){
+        container.removeChild(container.firstChild)
+    }
+    for(var j=0;j<Object.keys(component.value).length;j++){
+        if(Object.keys(component.value)[j] != 'frequency' || domain == 'ac'){
+            container.appendChild(document.createTextNode(Object.keys(component.value)[j]));
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.name = Object.keys(component.value)[j];
+            //input.value = component.value[Object.keys(component.value)[j]];
+            var obj = new getBox(input, component.value[Object.keys(component.value)[j]], Object.keys(component.value)[j])
+            edit_boxes.push(obj)
+            container.appendChild(input);
+            container.appendChild(document.createElement("br"));
+        }
+    }
     ctx.beginPath()
     ctx.moveTo(component.x, component.y);
 
     ctx.fillStyle = 'black'
-    ctx.fillRect(component.x, component.y, 50+8*(Math.floor(Math.log10(component.value))), -100)
+    ctx.fillRect(component.x, component.y, 50+8*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), -120)
     ctx.fillStyle = 'green'
     ctx.moveTo(component.x+10, component.y-70)
-    ctx.lineTo(component.x+25+4*(Math.floor(Math.log10(component.value))), component.y-90)
-    ctx.lineTo(component.x+40+8*(Math.floor(Math.log10(component.value))), component.y-70)
+    ctx.lineTo(component.x+25+4*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-90)
+    ctx.lineTo(component.x+40+8*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-70)
     ctx.moveTo(component.x+10, component.y-30)
-    ctx.lineTo(component.x+25+4*(Math.floor(Math.log10(component.value))), component.y-10)
-    ctx.lineTo(component.x+40+8*(Math.floor(Math.log10(component.value))), component.y-30)
+    ctx.lineTo(component.x+25+4*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-10)
+    ctx.lineTo(component.x+40+8*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-30)
     ctx.font = "18px Arial";
-    ctx.fillText(component.value+" Ω", component.x+10, component.y-43)
+    ctx.fillText('SET', component.x+8+4*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-105)
+    if(component.type=="resistor"){
+        ctx.fillText(component.value[Object.keys(component.value)[0]].toPrecision(4)+" Ω", component.x+10, component.y-43)
+    } else if(component.type=="voltage"){
+        ctx.fillText(component.value[Object.keys(component.value)[0]].toPrecision(4)+" V", component.x+10, component.y-43)
+    } else if(component.type=="inductor"){
+        ctx.fillText(component.value[Object.keys(component.value)[0]].toPrecision(4)+" H", component.x+10, component.y-43)
+    } else if(component.type=="capacitor"){
+        ctx.fillText(component.value[Object.keys(component.value)[0]].toPrecision(4)+" F", component.x+10, component.y-43)
+    }
+    
     ctx.font = "28px Arial";
     //ctx.fillText("+", component.x+10, component.y-80)
     //ctx.fillText("-", component.x+10, component.y-20)
@@ -136,17 +220,28 @@ function drawComponentEdit(component){
 
 
 function openComponentEdit(i){
+
     buttons = []
-    if(components[i].type == 'resistor'){
+    setbut = new Path2D();
+    setbut.rect(components[i].x, components[i].y-120, 40+8*(Math.floor(Math.log10(components[i].value[Object.keys(components[i].value)[0]]))), 20)
+    buttons.push({path: setbut, component:i, direction:'set'})
+    //if(components[i].type == 'resistor'){
         drawComponentEdit(components[i])
         upbut = new Path2D();
-        upbut.rect(components[i].x, components[i].y-100, 40, 30)
+        upbut.rect(components[i].x, components[i].y-100, 40+8*(Math.floor(Math.log10(components[i].value[Object.keys(components[i].value)[0]]))), 30)
         buttons.push({path: upbut, component:i, direction:'up'})
         downbut = new Path2D();
-        downbut.rect(components[i].x, components[i].y-30, 40, 30)
+        downbut.rect(components[i].x, components[i].y-30, 40+8*(Math.floor(Math.log10(components[i].value[Object.keys(components[i].value)[0]]))), 30)
         buttons.push({path: downbut, component:i, direction:'down'})
-
-    }
+    /*} else if(components[i].type == 'voltage'){
+        drawComponentEdit(components[i])
+        upbut = new Path2D();
+        upbut.rect(components[i].x, components[i].y-100, 40+8*(Math.floor(Math.log10(components[i].value[Object.keys(components[i].value)[0]]))), 30)
+        buttons.push({path: upbut, component:i, direction:'up'})
+        downbut = new Path2D();
+        downbut.rect(components[i].x, components[i].y-30, 40+8*(Math.floor(Math.log10(components[i].value[Object.keys(components[i].value)[0]]))), 30)
+        buttons.push({path: downbut, component:i, direction:'down'})
+    }*/
 }
 
 // line tool
@@ -306,6 +401,16 @@ function checkComponents(curX, curY, components, wires, wiring_status){
     return({wiring_status: wiring_status})
 }
 
+function changeDomain(){
+    if(domain=='dc'){
+        domain='ac';
+    } else {
+        domain = 'dc';
+    }
+    drawCircuit();
+    img = ctx.getImageData(0,0,width,height)    
+}
+
 function wire (){
     drawCircuit()
     var wiring_status = {wire_started: false, wire_start: false}
@@ -389,8 +494,6 @@ function wire (){
         curX = (e.clientX - canvas.offsetLeft)/scale;
         curY = (e.clientY - canvas.offsetTop)/scale;;
         //console.log(wires)
-        document.getElementById('x').innerText = 'CurX: '+curX.toString()
-        document.getElementById('y').innerText = 'CurY: '+curY.toString()
         if(!wiring_status.wire_started){
             return
         }
@@ -422,10 +525,18 @@ function ground(){
     img = ctx.getImageData(0,0,width,height)
     node_count = nodes.length
     voltage = 0
-    impedence = 0
-    node1 = node_count+1
-    nodes.push(node1)
-    gnd = makeComponent(-50, -50, 20, 30, impedence, voltage, 'ground', [node1])
+    gnd_exists = false;
+    for(var i=0; i<components.length; i++){
+        if(components[i].type == 'ground'){
+            gnd_exists = true;
+            node1 = components[i].nodes[0]
+        }
+    }
+    if(!gnd_exists){
+        node1 = node_count+1
+        nodes.push(node1)
+    }
+    gnd = makeComponent(-50, -50, 20, 30, voltage, 'ground', [node1])
     var new_gnd = true;
     canvas.onmousedown = function (e){
         curX = (e.clientX - canvas.offsetLeft)/scale;
@@ -434,10 +545,7 @@ function ground(){
         new_gnd = false;
         if(pressedKeys[18]==true){
             img = ctx.getImageData(0,0,width,height)
-            node_count = nodes.length
-            node1 = node_count+1
-            nodes.push(node1)
-            gnd = makeComponent(curX, curY, 20, 50, impedence, voltage, 'ground', [node1])
+            gnd = makeComponent(curX, curY, 20, 30, voltage, 'ground', [node1])
             new_gnd = true;
         }
         drawCircuit();
@@ -456,6 +564,57 @@ function ground(){
     };
 }
 
+function inductor (){
+    drawCircuit()
+    img = ctx.getImageData(0,0,width,height)
+    node_count = nodes.length
+    node1 = node_count+1
+    node2 = node1+1
+    nodes.push(node1)
+    nodes.push(node2)
+    inductance = 1;
+    resistance = 0;
+    ind = makeComponent(-50, -50, 20, 50, {inductance: inductance, resistance: resistance}, 'inductor', [node1, node2])
+    var new_ind = true;
+    canvas.onmousedown = function (e){
+        curX = (e.clientX - canvas.offsetLeft)/scale;
+        curY = (e.clientY - canvas.offsetTop)/scale;
+        components.push(ind);
+        new_ind = false;
+        if(pressedKeys[18]==true){
+            img = ctx.getImageData(0,0,width,height)
+            node_count = nodes.length
+            node1 = node_count+1
+            node2 = node1+1
+            nodes.push(node1)
+            nodes.push(node2)
+            ind = makeComponent(-50, -50, 20, 50, {inductance: inductance, resistance: resistance}, 'inductor', [node1, node2])
+            new_ind = ind;
+        }
+        drawCircuit();
+    };
+        
+    canvas.onmousemove = function (e){
+        if(new_ind){
+            ctx.putImageData(img, 0, 0);
+            curX = (e.clientX - canvas.offsetLeft)/scale;
+            curY = (e.clientY - canvas.offsetTop)/scale;
+            ind.x = curX;
+            ind.y = curY;
+            ind.right = curX+ind.width;
+            ind.bottom = curY+ind.height;
+            drawComponent(ind);
+        }
+    };
+        
+    canvas.onmouseup = function (e){
+        hold = false;
+    };
+        
+    canvas.onmouseout = function (e){
+        hold = false;
+    };
+}
 
 function voltageSource (){
     img = ctx.getImageData(0,0,width,height)
@@ -464,9 +623,10 @@ function voltageSource (){
     node2 = node1+1
     nodes.push(node1)
     nodes.push(node2)
-    voltage = 12
-    impedence = 0
-    vs = makeComponent(-50, -50, 20, 50, impedence, voltage, 'voltage', [node1, node2])
+    amplitude = 12
+    frequency = 60
+    
+    vs = makeComponent(-50, -50, 20, 50, {amplitude: amplitude, frequency: frequency}, 'voltage', [node1, node2])
     var new_vs = true;
     canvas.onmousedown = function (e){
         curX = (e.clientX - canvas.offsetLeft)/scale;
@@ -480,7 +640,7 @@ function voltageSource (){
             node2 = node1+1
             nodes.push(node1)
             nodes.push(node2)
-            vs = makeComponent(curX, curY, 20, 50, impedence, voltage, 'voltage', [node1, node2])
+            vs = makeComponent(-50, -50, 20, 50, {amplitude: amplitude, frequency: frequency}, 'voltage', [node1, node2])
             new_vs = true;
         }
         drawCircuit();
@@ -511,7 +671,7 @@ function voltageSource (){
 
 function probe (){
     solve()
-    drawCircuit()
+    //drawCircuit()
     probing = true
     img = ctx.getImageData(0,0,width,height)
     canvas.onmousemove = function (e){
@@ -522,13 +682,15 @@ function probe (){
         curX = (e.clientX - canvas.offsetLeft)/scale;
         curY = (e.clientY - canvas.offsetTop)/scale;
         voltage = 0
+        voltage_print = 0
         for(var i=0; i<wires.length; i++){
             var result = checkWirePath(wires[i], curX, curY)
             if(result.status){
                 voltage=voltages.find(el => el.node === wires[i].node).voltage
+                voltage_print = voltage.real.toString()+' j'+voltage.imag.toString()
             }
         }
-        drawResult(curX, curY, voltage)
+        drawResult(curX, curY, voltage_print)
     }
     canvas.onmousedown = function (e){
         ctx.putImageData(img, 0, 0);
@@ -551,6 +713,56 @@ function probe (){
     }
 }
 
+function capacitor (){
+    drawCircuit()
+    img = ctx.getImageData(0,0,width,height)
+    node_count = nodes.length
+    node1 = node_count+1
+    node2 = node1+1
+    nodes.push(node1)
+    nodes.push(node2)
+    capacitance = 1
+    cap = makeComponent(-50, -50, 16, 50, {capacitance: capacitance}, 'capacitor', [node1, node2])
+    var new_cap = true;
+    canvas.onmousedown = function (e){
+        curX = (e.clientX - canvas.offsetLeft)/scale;
+        curY = (e.clientY - canvas.offsetTop)/scale;
+        components.push(cap);
+        new_cap = false;
+        if(pressedKeys[18]==true){
+            img = ctx.getImageData(0,0,width,height)
+            node_count = nodes.length
+            node1 = node_count+1
+            node2 = node1+1
+            nodes.push(node1)
+            nodes.push(node2)
+            cap = makeComponent(-50, -50, 16, 50, {capacitance: capacitance}, 'capacitor', [node1, node2])
+            new_cap = true;
+        }
+        drawCircuit();
+    };
+        
+    canvas.onmousemove = function (e){
+        if(new_cap){
+            ctx.putImageData(img, 0, 0);
+            curX = (e.clientX - canvas.offsetLeft)/scale;
+            curY = (e.clientY - canvas.offsetTop)/scale;
+            cap.x = curX;
+            cap.y = curY;
+            cap.right = curX+cap.width;
+            cap.bottom = curY+cap.height;
+            drawComponent(cap);
+        }
+    };
+        
+    canvas.onmouseup = function (e){
+        hold = false;
+    };
+        
+    canvas.onmouseout = function (e){
+        hold = false;
+    };
+}
 
 function resistor (){
     drawCircuit()
@@ -560,9 +772,9 @@ function resistor (){
     node2 = node1+1
     nodes.push(node1)
     nodes.push(node2)
-    impedence = 1;
+    
     value = 1;
-    res = makeComponent(-50, -50, 20, 50, impedence, value, 'resistor', [node1, node2])
+    res = makeComponent(-50, -50, 12, 50, {resistance: value}, 'resistor', [node1, node2])
     var new_res = true;
     canvas.onmousedown = function (e){
         curX = (e.clientX - canvas.offsetLeft)/scale;
@@ -576,7 +788,7 @@ function resistor (){
             node2 = node1+1
             nodes.push(node1)
             nodes.push(node2)
-            res = makeComponent(curX, curY, 20, 50, impedence, value, 'resistor', [node1, node2])
+            res = makeComponent(-50, -50, 12, 50, {resistance: value}, 'resistor', [node1, node2])
             new_res = true;
         }
         drawCircuit();
@@ -623,7 +835,11 @@ function drawResult(x, y, value){
     ctx.beginPath()
     ctx.moveTo(x, y);
     ctx.fillStyle = 'black'
-    ctx.fillRect(x, y, 50, -50)
+    if(value>0){
+        ctx.fillRect(x, y, 93+15*(Math.floor(Math.log10(value))), -50)
+    } else {
+        ctx.fillRect(x, y, 93, -50)
+    }
     ctx.fillStyle = 'green'
     ctx.font = "30px Arial";
     ctx.fillText(value, x+10, y-10)
@@ -646,9 +862,11 @@ function drawCircuit(){
             var result = checkWirePath(wires[j], probes[i].x, probes[i].y)
             if(result.status){
                 voltage=voltages.find(el => el.node === wires[j].node).voltage
+                voltage_print = voltage.real.toString()+' j'+voltage.imag.toString()
+                console.log(voltage)
             }
         }
-        drawResult(probes[i].x, probes[i].y, voltage)
+        drawResult(probes[i].x, probes[i].y, voltage_print)
     } 
 }
 
@@ -659,7 +877,7 @@ function drawComponent(component){
     if(component.type=='resistor'){
         ctx.beginPath();
         ctx.moveTo(component.x, component.y);
-        ctx.fillText(component.nodes[0], component.x-20, component.y)
+        //ctx.fillText(component.nodes[0], component.x-20, component.y)
         ctx.lineTo(component.x, component.y+component.height/9);
         ctx.lineTo(component.x-component.width/2, component.y+2*component.height/9);
         ctx.lineTo(component.x+component.width/2, component.y+3*component.height/9);
@@ -669,17 +887,25 @@ function drawComponent(component){
         ctx.lineTo(component.x+component.width/2, component.y+7*component.height/9);
         ctx.lineTo(component.x, component.y+8*component.height/9);
         ctx.lineTo(component.x, component.y+component.height);
-        ctx.fillText(component.nodes[1], component.x-20, component.y+component.height)
+        //ctx.fillText(component.nodes[1], component.x-20, component.y+component.height)
         ctx.stroke();
     } else if (component.type == 'voltage'){
         ctx.beginPath();
         ctx.moveTo(component.x, component.y);
-        ctx.fillText(component.nodes[0], component.x-20, component.y)
+        ctx.font = "20px Arial";
+        if(domain=='dc'){
+            ctx.fillText('+', component.x-6, component.y+5*component.height/11)
+            ctx.fillText('-', component.x-3, component.y+4*component.height/5)
+        } else {
+            ctx.fillText('~', component.x-5, component.y+2.5*component.height/4)
+        }
+        ctx.font = "14px Arial";
+        //ctx.fillText(component.nodes[0], component.x-20, component.y)
         ctx.lineTo(component.x, component.y+component.height/8);
         ctx.arc(component.x, component.y+component.height/2, 3*component.height/8, 3*Math.PI/2, 11*Math.PI/2);
         ctx.moveTo(component.x, component.y+7*component.height/8);
         ctx.lineTo(component.x, component.y+component.height);
-        ctx.fillText(component.nodes[1], component.x-20, component.y+component.height)
+        //ctx.fillText(component.nodes[1], component.x-20, component.y+component.height)
         ctx.stroke();
     } else if (component.type == 'ground'){
         ctx.beginPath();
@@ -689,11 +915,32 @@ function drawComponent(component){
         ctx.lineTo(component.x+component.width/2, component.y+2*component.height/8);
         ctx.moveTo(component.x-component.width/3, component.y+4*component.height/8);
         ctx.lineTo(component.x+component.width/3, component.y+4*component.height/8);
-        ctx.moveTo(component.x-component.width/4, component.y+6*component.height/8);
-        ctx.lineTo(component.x+component.width/4, component.y+6*component.height/8);
-        ctx.moveTo(component.x-component.width/6, component.y+component.height);
-        ctx.lineTo(component.x+component.width/6, component.y+component.height);
+        ctx.moveTo(component.x-component.width/6, component.y+6*component.height/8);
+        ctx.lineTo(component.x+component.width/6, component.y+6*component.height/8);
         ctx.stroke();
+    } else if (component.type == 'inductor'){
+        ctx.beginPath();
+        ctx.moveTo(component.x, component.y);
+        ctx.lineTo(component.x, component.y+component.height/8);
+        //ctx.moveTo(component.x+component.height/8/Math.sqrt(2), component.y+2*component.height/8+component.height/8/Math.sqrt(2))
+        ctx.arc(component.x, component.y+2*component.height/8, component.height/8, -Math.PI/2, 3*Math.PI/4);
+        ctx.arc(component.x, component.y+2*component.height/8+component.height/8*Math.sqrt(2), component.height/8, -3*Math.PI/4, 3*Math.PI/4);
+        ctx.arc(component.x, component.y+2*component.height/8+2*component.height/8*Math.sqrt(2), component.height/8, -3*Math.PI/4, 3*Math.PI/4);
+        ctx.arc(component.x, component.y+2*component.height/8+3*component.height/8*Math.sqrt(2), component.height/8, -3*Math.PI/4, Math.PI/2);
+        ctx.moveTo(component.x, component.y+7.2*component.height/8);
+        ctx.lineTo(component.x, component.y+component.height);
+        ctx.stroke();
+    } else if (component.type == 'capacitor'){
+        ctx.beginPath();
+        ctx.moveTo(component.x, component.y);
+        ctx.lineTo(component.x, component.y+2*component.height/5)
+        ctx.moveTo(component.x-component.width/2, component.y+2*component.height/5)
+        ctx.lineTo(component.x+component.width/2, component.y+2*component.height/5)
+        ctx.moveTo(component.x-component.width/2, component.y+3*component.height/5)
+        ctx.lineTo(component.x+component.width/2, component.y+3*component.height/5)
+        ctx.moveTo(component.x, component.y+3*component.height/5)
+        ctx.lineTo(component.x, component.y+component.height)
+        ctx.stroke()
     }
 }
 
@@ -792,7 +1039,7 @@ function makeWire(x1, y1, x2, y2, node){
     return(wire);
 }
 
-function makeComponent(x, y, width, height, impedence, value, type, nodes){ 
+function makeComponent(x, y, width, height, value, type, nodes){ 
     var component = {
         x: x, 
         y: y, 
@@ -802,7 +1049,6 @@ function makeComponent(x, y, width, height, impedence, value, type, nodes){
         bottom: y+height,
         type: type,
         nodes: nodes,
-        impedence: impedence,
         value: value
     }
     //components.push(component);
@@ -870,9 +1116,14 @@ function solve(){
 
     // add form input from hidden input elsewhere on the page
     let csrftoken = getCookie('csrftoken');
+    if(domain == "dc"){
+        body = JSON.stringify(components)
+    } else if(domain=='ac'){
+        body = JSON.stringify({frequency: frequency, components: components})
+    }
     fetch("/canvas/solve", {
         method: 'POST',
-        body: JSON.stringify(components),
+        body: body,
         headers: { "X-CSRFToken": csrftoken },
         credentials: 'same-origin',
     }).then(res => {
@@ -881,15 +1132,7 @@ function solve(){
         console.log(data)
         voltages = data.voltages
         currents = data.currents
-        const table = document.getElementById("testBody");
-        table.innerHTML = ""
-        voltages.forEach( data => {
-            let row = table.insertRow();
-            let node = row.insertCell(0);
-            node.innerHTML = data.node;
-            let voltage = row.insertCell(1);
-            voltage.innerHTML = data.voltage;
-        });
+        //drawCircuit()
     })
     /*
     fetch("/canvas/solve", {
