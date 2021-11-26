@@ -9,11 +9,11 @@ class Node:
     v = 0
     
 
-    def __init__(self, type='voltage'):
-        self.type = type
-        if(type=='gnd'):
+    def __init__(self, comp_type='voltage'):
+        self.comp_type = comp_type
+        if(comp_type=='gnd'):
             self.v=0
-        elif(type=='voltage'):
+        elif(comp_type=='voltage'):
             self.v=0
 
 
@@ -21,56 +21,57 @@ class Node:
 class Put:
     v = 0
     z = 0
-    type = 'none'
+    comp_type = 'none'
 
-    def __init__(self, type, value):
-        if(type=='voltage'):
+    def __init__(self, comp_type, value):
+        if(comp_type=='voltage'):
             self.v = value
-            self.type = 'voltage-source'
-        elif(type=='current'):
+            self.comp_type = 'voltage'
+        elif(comp_type=='current'):
             self.i = value
-            self.type = 'current-source'
-        elif(type=='resistor'):
+            self.comp_type = 'current-source'
+        elif(comp_type=='resistor'):
             self.z = value
-            self.type = 'resistor'
-        elif(type=='capacitor'):
+            self.comp_type = 'resistor'
+        elif(comp_type=='capacitor'):
             self.z = value
-            self.type = 'capacitor'
-        elif(type=='inductor'):
+            self.comp_type = 'capacitor'
+        elif(comp_type=='inductor'):
             self.z = value
-            self.type = 'inductor'
+            self.comp_type = 'inductor'
 
 def solve(components, frequency):
-    print(components)
+    #print(components)
     G = nx.MultiGraph()
     gnd_node = None
     v_s_count = 0
     v_s_arr = []
     for component in components:
-        if(component['type'] == 'voltage'):
+        if(component['comp_type'] == 'voltage'):
             v_s_arr.append(component)
             v_s_count = v_s_count + 1
-        elif(component['type'] == 'resistor'):
+        elif(component['comp_type'] == 'resistor'):
             G.add_node(component["nodes"][0])
             G.add_node(component["nodes"][1])
             impedence = complex(component['value']['resistance'])
             #print(component["nodes"][0], component["nodes"][1])
-            G.add_edge(component["nodes"][0], component["nodes"][1], put=Put(component['type'], impedence))
-        elif(component['type'] == 'inductor'):
+            G.add_edge(component["nodes"][0], component["nodes"][1], put=Put(component['comp_type'], impedence))
+        elif(component['comp_type'] == 'inductor'):
             G.add_node(component["nodes"][0])
             G.add_node(component["nodes"][1])
             impedence = complex(component['value']['resistance'], 2*math.pi*frequency*component['value']['inductance'])
             #print(component["nodes"][0], component["nodes"][1])
-            G.add_edge(component["nodes"][0], component["nodes"][1], put=Put(component['type'], impedence))
-        elif(component['type'] == 'capacitor'):
+            G.add_edge(component["nodes"][0], component["nodes"][1], put=Put(component['comp_type'], impedence))
+        elif(component['comp_type'] == 'capacitor'):
             G.add_node(component["nodes"][0])
             G.add_node(component["nodes"][1])
             impedence = complex(0, (-1/(2*math.pi*frequency*component['value']['capacitance'])))
+            print(impedence)
             #print(component["nodes"][0], component["nodes"][1])
-            G.add_edge(component["nodes"][0], component["nodes"][1], put=Put(component['type'], impedence))
+            G.add_edge(component["nodes"][0], component["nodes"][1], put=Put(component['comp_type'], impedence))
         else:
             gnd_node = component["nodes"][0]
-    print(v_s_arr)
+    #print(v_s_arr)
     matrix = []
     vs = []
 
@@ -83,14 +84,14 @@ def solve(components, frequency):
 
 
     non_gnd_nodes = list(n for n in G.nodes() if n!=gnd_node)
-    print(non_gnd_nodes)
+    #print(non_gnd_nodes)
 
     node_count = len(non_gnd_nodes)
 
     #for edge in list(G.edges.data('put')):
         
         #print(edge[2].type)
-    #    if(edge[2].type == 'voltage-source'):
+    #    if(edge[2].type == 'voltage'):
     #        print(edge[0], edge[1], edge[2])
             #print(edge[2].v)
     #        v_s_arr.append(edge)
@@ -115,7 +116,7 @@ def solve(components, frequency):
                     #print(G[edge[0]][edge[1]])
                     for subedge in G[edge[0]][edge[1]]:
                         #print(G[edge[0]][edge[1]][subedge]['put'].type)
-                        if(G[edge[0]][edge[1]][subedge]['put'].type!='voltage-source'):
+                        if(G[edge[0]][edge[1]][subedge]['put'].comp_type!='voltage'):
                             #print("edge resistance: ", G[edge[0]][edge[1]][subedge]['put'].z)
                             sub_sum_cond_inv = sub_sum_cond_inv + 1/G[edge[0]][edge[1]][subedge]['put'].z
                             #print("admittance of ", subedge, sub_sum_cond_inv)
@@ -130,13 +131,13 @@ def solve(components, frequency):
                 sub_sum_cond_inv = complex(0)
                 for subedge in G[nodej][nodek]:
                     #print(nodej,nodek, G[nodej][nodek][subedge]['put'].z)
-                    if(G[nodej][nodek][subedge]['put'].type!='voltage-source'):
+                    if(G[nodej][nodek][subedge]['put'].comp_type!='voltage'):
                         sub_sum_cond_inv = sub_sum_cond_inv + 1/G[nodej][nodek][subedge]['put'].z
                 #print(sub_sum_cond_inv)
                 if(sub_sum_cond_inv.real**2+sub_sum_cond_inv.imag**2>0):
                     addMat[i][j] = -1*sub_sum_cond_inv
         for k, v_s in enumerate(v_s_arr):
-            print(v_s)
+            #print(v_s)
             if(v_s['nodes'][1] == nodej):
                 addMat[node_count+k][i] = -1
                 addMat[i][node_count+k] = -1
@@ -153,7 +154,7 @@ def solve(components, frequency):
     for k, v_s in enumerate(v_s_arr):
         #print(v_s['nodes'])
         z = np.append(z, v_s['value']['amplitude'])
-    print(z)
+    #print(z)
 
     vs_is = np.dot(np.linalg.inv(addMat), z)
 

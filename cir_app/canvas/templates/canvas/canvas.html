@@ -1,6 +1,7 @@
 {% load static %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.js" integrity="sha512-+lwWRCGAWhCLRPruF7ruYxRlMQuRD1H9C/Pc/HYcuxachoLufBO7OU66bfFnVsFaHQj3S/CunEimw8alVvkl+Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
+{{cir_pk}}
+<script>var cir_pk = {{pk}}</script>
 
 <p></p>
 <canvas id="canvas" width="1100" height="650" style="border: 5px solid
@@ -34,6 +35,8 @@
   <button id="edit" type="button" style="height: 25px; width: 100px;" onclick="edit()">Edit</button>
   <p></p>
   <button id="domain" type="button" style="height: 25px; width: 100px;" onclick="changeDomain()">AC/DC</button>
+  <p></p>
+  <button id="save" type="button" style="height: 25px; width: 100px;" onclick="save()">Save</button>
   <p></p>
 </div>
 <p></p>

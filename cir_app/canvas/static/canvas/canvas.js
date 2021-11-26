@@ -16,12 +16,13 @@ var width = canvas.width, height = canvas.height;
 var curX, curY, prevX, prevY;
 var hold = false;
 var fill_value = true, stroke_value = false;
-var canvas_data = { "pencil": [], "line": [], "rectangle": [], "circle": [], "eraser": [] };
 ctx.lineWidth = 2;
 
 var mouseIsDown = false;
 var lastX = 0;
 var lastY = 0;
+
+
 
 var components = [];
 var wires = [];
@@ -32,8 +33,15 @@ var buttons = []
 var probes = []
 var edit_boxes = []
 var domain = 'dc'
+
 scale = 1
-console.log(math.round(math.e, 3))
+
+//cir_pk = ''
+if(typeof  cir_pk !== 'undefined'){
+    data = load(cir_pk)
+    console.log(data)
+}
+
 
 drawCircuit()
                         
@@ -97,7 +105,7 @@ getBox.prototype.change = function(value) {
     this.element.value = value;
 };
 
-var obj = new getBox(document.getElementById("functionbar"), "20");
+//var obj = new getBox(document.getElementById("functionbar"), "20");
 
 function edit (){
     img = ctx.getImageData(0,0,width,height)
@@ -122,6 +130,7 @@ function edit (){
             button_hit = false;
             for(var i=0; i<buttons.length;i++){
                 if(ctx.isPointInPath(buttons[i].path, curX, curY)){
+                    console.log(buttons[i].path)
                     if(buttons[i].direction == 'up'){
                         button_hit = true;
                         components[buttons[i].component].value[Object.keys(components[buttons[i].component].value)[0]] = components[buttons[i].component].value[Object.keys(components[buttons[i].component].value)[0]] + 1
@@ -131,6 +140,7 @@ function edit (){
                     } else if(buttons[i].direction=='set'){
                         button_hit = true;
                         for(var j=0; j<edit_boxes.length;j++){
+                            console.log(edit_boxes[j].key)
                             components[buttons[i].component].value[edit_boxes[j].key] = parseFloat(edit_boxes[j].data);
                             if(edit_boxes[j].key=='frequency'){
                                 frequency = parseFloat(edit_boxes[j].data)
@@ -142,10 +152,23 @@ function edit (){
                     solve()
                     drawCircuit()
                     drawComponentEdit(components[buttons[i].component])
+                } else {
+                    buttons = []
+                    edit_boxes = []
+                    var container = document.getElementById('editor')
+                    while (container.firstChild){
+                        container.removeChild(container.firstChild)
+                    }
+                    solve()
+                    ctx.clearRect(0,0,canvas.width/scale,canvas.height/scale)
+                    drawCircuit()
+                    editing = false;
                 }
             }
             if(button_hit == false){
                 //ctx.putImageData(img, 0,0)
+                buttons = []
+                edit_boxes = []
                 var container = document.getElementById('editor')
                 while (container.firstChild){
                     container.removeChild(container.firstChild)
@@ -190,23 +213,24 @@ function drawComponentEdit(component){
     ctx.moveTo(component.x, component.y);
 
     ctx.fillStyle = 'black'
-    ctx.fillRect(component.x, component.y, 50+8*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), -120)
+    ctx.fillRect(component.x, component.y, 50+8*(component.value[Object.keys(component.value)[0]].toString().length), -120)
     ctx.fillStyle = 'green'
     ctx.moveTo(component.x+10, component.y-70)
-    ctx.lineTo(component.x+25+4*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-90)
-    ctx.lineTo(component.x+40+8*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-70)
+    console.log(component.value[Object.keys(component.value)[0]].toString().length)
+    ctx.lineTo(component.x+25+4*(component.value[Object.keys(component.value)[0]].toString().length), component.y-90)
+    ctx.lineTo(component.x+40+8*(component.value[Object.keys(component.value)[0]].toString().length), component.y-70)
     ctx.moveTo(component.x+10, component.y-30)
-    ctx.lineTo(component.x+25+4*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-10)
-    ctx.lineTo(component.x+40+8*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-30)
+    ctx.lineTo(component.x+25+4*(component.value[Object.keys(component.value)[0]].toString().length), component.y-10)
+    ctx.lineTo(component.x+40+8*(component.value[Object.keys(component.value)[0]].toString().length), component.y-30)
     ctx.font = "18px Arial";
-    ctx.fillText('SET', component.x+8+4*(Math.floor(Math.log10(component.value[Object.keys(component.value)[0]]))), component.y-105)
-    if(component.type=="resistor"){
+    ctx.fillText('SET', component.x+8+4*(component.value[Object.keys(component.value)[0]].toString().length), component.y-105)
+    if(component.comp_type=="resistor"){
         ctx.fillText(component.value[Object.keys(component.value)[0]].toPrecision(4)+" Ω", component.x+10, component.y-43)
-    } else if(component.type=="voltage"){
+    } else if(component.comp_type=="voltage"){
         ctx.fillText(component.value[Object.keys(component.value)[0]].toPrecision(4)+" V", component.x+10, component.y-43)
-    } else if(component.type=="inductor"){
+    } else if(component.comp_type=="inductor"){
         ctx.fillText(component.value[Object.keys(component.value)[0]].toPrecision(4)+" H", component.x+10, component.y-43)
-    } else if(component.type=="capacitor"){
+    } else if(component.comp_type=="capacitor"){
         ctx.fillText(component.value[Object.keys(component.value)[0]].toPrecision(4)+" F", component.x+10, component.y-43)
     }
     
@@ -223,7 +247,7 @@ function openComponentEdit(i){
 
     buttons = []
     setbut = new Path2D();
-    setbut.rect(components[i].x, components[i].y-120, 40+8*(Math.floor(Math.log10(components[i].value[Object.keys(components[i].value)[0]]))), 20)
+    setbut.rect(components[i].x, components[i].y-120, 40+8*(components[i].value[Object.keys(components[i].value)[0]].toString().length), 20)
     buttons.push({path: setbut, component:i, direction:'set'})
     //if(components[i].type == 'resistor'){
         drawComponentEdit(components[i])
@@ -403,6 +427,7 @@ function checkComponents(curX, curY, components, wires, wiring_status){
 
 function changeDomain(){
     if(domain=='dc'){
+        frequency = 60;
         domain='ac';
     } else {
         domain = 'dc';
@@ -527,7 +552,7 @@ function ground(){
     voltage = 0
     gnd_exists = false;
     for(var i=0; i<components.length; i++){
-        if(components[i].type == 'ground'){
+        if(components[i].comp_type == 'ground'){
             gnd_exists = true;
             node1 = components[i].nodes[0]
         }
@@ -572,7 +597,7 @@ function inductor (){
     node2 = node1+1
     nodes.push(node1)
     nodes.push(node2)
-    inductance = 1;
+    inductance = 0.001;
     resistance = 0;
     ind = makeComponent(-50, -50, 20, 50, {inductance: inductance, resistance: resistance}, 'inductor', [node1, node2])
     var new_ind = true;
@@ -687,8 +712,19 @@ function probe (){
             var result = checkWirePath(wires[i], curX, curY)
             if(result.status){
                 voltage=voltages.find(el => el.node === wires[i].node).voltage
-                voltage_print = voltage.real.toString()+' j'+voltage.imag.toString()
+                if(domain=='ac'){
+                    comp_voltage = math.complex(voltage.real, voltage.imag)
+                    var phase = (math.arg(comp_voltage)*180/Math.PI).toPrecision(4)
+                    var magnitude = math.abs(comp_voltage).toPrecision(4)
+                    voltage_print = magnitude.toString()+' V - '+phase.toString()+'°'
+                } else if(domain=='dc'){
+                    voltage_print = voltage.real+' V'
+                }
+                
             }
+        }
+        for(var i=0; i<components.length;i++){
+            var result = checkComponents(curX, curY, components[i])
         }
         drawResult(curX, curY, voltage_print)
     }
@@ -721,7 +757,7 @@ function capacitor (){
     node2 = node1+1
     nodes.push(node1)
     nodes.push(node2)
-    capacitance = 1
+    capacitance = 0.000001
     cap = makeComponent(-50, -50, 16, 50, {capacitance: capacitance}, 'capacitor', [node1, node2])
     var new_cap = true;
     canvas.onmousedown = function (e){
@@ -820,7 +856,7 @@ function resistor (){
 // eraser tool
         
 
-
+/*
 function save (){
     var filename = document.getElementById("fname").value;
     var data = JSON.stringify(canvas_data);
@@ -830,7 +866,7 @@ function save (){
     alert(filename + " saved");
     
 } 
-
+*/
 function drawResult(x, y, value){
     ctx.beginPath()
     ctx.moveTo(x, y);
@@ -874,7 +910,8 @@ function drawComponent(component){
     console.log('drawing component')
     ctx.fillStyle = 'black'
     ctx.font = "14px Arial";
-    if(component.type=='resistor'){
+    console.log(component.comp_type)
+    if(component.comp_type=='resistor'){
         ctx.beginPath();
         ctx.moveTo(component.x, component.y);
         //ctx.fillText(component.nodes[0], component.x-20, component.y)
@@ -889,7 +926,7 @@ function drawComponent(component){
         ctx.lineTo(component.x, component.y+component.height);
         //ctx.fillText(component.nodes[1], component.x-20, component.y+component.height)
         ctx.stroke();
-    } else if (component.type == 'voltage'){
+    } else if (component.comp_type == 'voltage'){
         ctx.beginPath();
         ctx.moveTo(component.x, component.y);
         ctx.font = "20px Arial";
@@ -907,7 +944,7 @@ function drawComponent(component){
         ctx.lineTo(component.x, component.y+component.height);
         //ctx.fillText(component.nodes[1], component.x-20, component.y+component.height)
         ctx.stroke();
-    } else if (component.type == 'ground'){
+    } else if (component.comp_type == 'ground'){
         ctx.beginPath();
         ctx.moveTo(component.x, component.y);
         ctx.lineTo(component.x, component.y+2*component.height/8);
@@ -918,7 +955,7 @@ function drawComponent(component){
         ctx.moveTo(component.x-component.width/6, component.y+6*component.height/8);
         ctx.lineTo(component.x+component.width/6, component.y+6*component.height/8);
         ctx.stroke();
-    } else if (component.type == 'inductor'){
+    } else if (component.comp_type == 'inductor'){
         ctx.beginPath();
         ctx.moveTo(component.x, component.y);
         ctx.lineTo(component.x, component.y+component.height/8);
@@ -930,7 +967,7 @@ function drawComponent(component){
         ctx.moveTo(component.x, component.y+7.2*component.height/8);
         ctx.lineTo(component.x, component.y+component.height);
         ctx.stroke();
-    } else if (component.type == 'capacitor'){
+    } else if (component.comp_type == 'capacitor'){
         ctx.beginPath();
         ctx.moveTo(component.x, component.y);
         ctx.lineTo(component.x, component.y+2*component.height/5)
@@ -1039,7 +1076,7 @@ function makeWire(x1, y1, x2, y2, node){
     return(wire);
 }
 
-function makeComponent(x, y, width, height, value, type, nodes){ 
+function makeComponent(x, y, width, height, value, comp_type, nodes){ 
     var component = {
         x: x, 
         y: y, 
@@ -1047,7 +1084,7 @@ function makeComponent(x, y, width, height, value, type, nodes){
         height: height,
         right: x+width, 
         bottom: y+height,
-        type: type,
+        comp_type: comp_type,
         nodes: nodes,
         value: value
     }
@@ -1111,6 +1148,38 @@ function zoom(dir){
     }
     drawCircuit()
 }
+
+function save(){
+    let csrftoken = getCookie('csrftoken');
+    if(typeof(cir_pk)=='undefined'){
+        cir_pk='new'
+    }
+    console.log(cir_pk, components)
+    let data = {pk: cir_pk, components: components, wires: wires};
+    body = JSON.stringify(data)
+    console.log(data)
+    fetch("/canvas/save", {
+        method: 'POST',
+        body: body,
+        headers: { "X-CSRFToken": csrftoken },
+        credentials: 'same-origin',
+    }).then(res => {
+        location.href = res.url
+        console.log(res)
+    })
+}
+
+function load(pk){
+    fetch("/canvas/load/"+pk.toString())
+        .then(response => response.json())
+        .then(data => {
+            console.log(data)
+            wires = data.wires
+            components = data.components
+            drawCircuit()
+        });
+}
+
 
 function solve(){
 
